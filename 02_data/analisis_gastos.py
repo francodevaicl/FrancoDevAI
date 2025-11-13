@@ -35,12 +35,23 @@ if __name__ == "__main__":
     ruta = "02_data/gastos_demo.csv"
     gastos = leer_gastos(ruta)
 
-    print("\n=== ANALISIS DE GASTOS ===")
-    print("Total gastado:", total_gastado(gastos))
-    print("\nPor categoría:")
+    total = total_gastado(gastos)
 
-    for cat, monto in gastos_por_categoria(gastos).items():
-        print(f" - {cat}: {monto}")
+    print("\n=== ANALISIS DE GASTOS ===")
+    print("Total gastado:", total)
+
+    # -------- NUEVO BLOQUE CON PORCENTAJES --------
+    print("\nPor categoría (monto y % del total):")
+    por_cat = gastos_por_categoria(gastos)
+
+    for cat, monto in por_cat.items():
+        porcentaje = (monto / total) * 100
+        print(f" - {cat}: {monto} ({porcentaje:.2f}%)")
+    # ------------------------------------------------
+
+    print("\nPromedio por categoría:")
+    for cat, prom in promedio_por_categoria(gastos).items():
+        print(f" - {cat}: {prom:.2f}")
 
     print("\nPromedio por categoría:")
     for cat, prom in promedio_por_categoria(gastos).items():
