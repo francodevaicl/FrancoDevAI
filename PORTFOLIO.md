@@ -4,13 +4,14 @@ Este documento resume mis proyectos, su utilidad y evidencias.
 
 ---
 
-## [P01] Dashboard de Finanzas Personales
-- Tipo: Análisis de datos + visualización
-- Problema que resuelve: ayuda a ver en qué se va realmente el dinero.
-- Tecnologías: Python, pandas, matplotlib, CSV.
-- Ruta en repo (planificada): `02_data/`
-- Capturas: *(por agregar)*
-- Resultado: *(por describir cuando esté listo)*
+## [P01] Dashboard de Finanzas Personales (versión 0.1)
+- Tipo: Análisis de datos + reporte automático en texto
+- Problema que resuelve: da una visión clara del total gastado, por categoría y promedios, sin necesidad de que el usuario sepa programar.
+- Tecnologías: Python, CSV, procesamiento de datos básico.
+- Ruta en repo: `02_data/analisis_gastos.py`
+- Archivos generados:
+  - `02_data/resumen_gastos.txt` (reporte listo para leer)
+- Resultado: informe legible para el usuario con totales, porcentajes y promedios.
 
 ---
 
