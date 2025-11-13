@@ -1,0 +1,16 @@
+=== RESUMEN DE GASTOS ===
+Total gastado: 94000
+
+Por categoría (monto y % del total):
+ - comida: 19000 (20.21%)
+ - transporte: 3000 (3.19%)
+ - servicios: 57000 (60.64%)
+ - entretenimiento: 10000 (10.64%)
+ - otros: 5000 (5.32%)
+
+Promedio por categoría:
+ - comida: 6333.33
+ - transporte: 1500.00
+ - servicios: 28500.00
+ - entretenimiento: 10000.00
+ - otros: 5000.00
