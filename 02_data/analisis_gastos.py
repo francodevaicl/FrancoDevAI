@@ -38,6 +38,15 @@ def leer_gastos(ruta_csv):
         # DictReader lee cada fila como un diccionario
         lector = csv.DictReader(archivo)
 
+        # Validamos columnas obligatorias (indentación correcta)
+        columnas_obligatorias = {"categoria", "monto", "detalle"}
+        if not columnas_obligatorias.issubset(lector.fieldnames):
+            print("❌ Error: el CSV no contiene las columnas necesarias.")
+            print("Columnas requeridas:", columnas_obligatorias)
+            print("Columnas encontradas:", lector.fieldnames)
+            return []
+
+        # Recorremos las filas del CSV
         for fila in lector:
             # Convertimos el monto de texto a número entero
             fila["monto"] = int(fila["monto"])
@@ -151,39 +160,43 @@ def generar_resumen(gastos, ruta_resumen="02_data/resumen_gastos.txt"):
 
 
 if __name__ == "__main__":
-    """
-    Punto de entrada del programa.
+    print("\n=== ANALIZADOR DE GASTOS (v0.2) ===")
 
-    Esta parte se ejecuta SOLO cuando corremos:
-        python 02_data/analisis_gastos.py
+    # 1. Solicitamos al usuario un archivo CSV
+    ruta = input("Ingresa la ruta del archivo CSV (ej: 02_data/gastos_demo.csv): ").strip()
 
-    Si este archivo se importara desde otro, este bloque no se ejecuta.
-    """
-    # 1. Definimos la ruta del archivo CSV a analizar
-    ruta = "02_data/gastos_demo.csv"
+    # 2. Intentamos leer el archivo con manejo de errores
+    try:
+        gastos = leer_gastos(ruta)
 
-    # 2. Leemos los gastos desde el CSV
-    gastos = leer_gastos(ruta)
+        # Si la lista viene vacía es porque hubo un error controlado
+        if not gastos:
+            print("No se pudo procesar el archivo.")
+            exit()
 
-    # 3. Calculamos el total gastado
+    except FileNotFoundError:
+        print("❌ Error: El archivo no existe o la ruta es incorrecta.")
+        exit()
+
+    # 3. Cálculos principales
     total = total_gastado(gastos)
+    por_cat = gastos_por_categoria(gastos)
+    promedios = promedio_por_categoria(gastos)
 
     print("\n=== ANALISIS DE GASTOS ===")
     print("Total gastado:", total)
 
-    # 4. Mostramos el detalle por categoría con porcentaje
+    # 4. Mostrar detalle por categoría
     print("\nPor categoría (monto y % del total):")
-    por_cat = gastos_por_categoria(gastos)
-
     for categoria, monto in por_cat.items():
         porcentaje = (monto / total) * 100 if total > 0 else 0
         print(f" - {categoria}: {monto} ({porcentaje:.2f}%)")
 
-    # 5. Mostramos el promedio por categoría
+    # 5. Mostrar promedios
     print("\nPromedio por categoría:")
-    promedios = promedio_por_categoria(gastos)
     for categoria, prom in promedios.items():
         print(f" - {categoria}: {prom:.2f}")
 
-    # 6. Generamos el archivo de resumen para entregar o guardar
+    # 6. Generar resumen en archivo
     generar_resumen(gastos)
+
