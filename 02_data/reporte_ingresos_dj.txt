@@ -1,0 +1,5 @@
+=== REPORTE DE INGRESOS DJ ===
+
+Ingreso total bruto: $785000
+Ingreso total neto:  $728000
+Valor hora promedio: $24266.67
