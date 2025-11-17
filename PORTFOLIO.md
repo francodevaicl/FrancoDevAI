@@ -30,4 +30,15 @@ Este documento resume mis proyectos, su utilidad y evidencias.
 
 ---
 
+## [P03] Analizador de Ingresos DJ (versión 0.1)
+
+- **Tipo:** Automatización + análisis de ingresos freelance
+- **Problema que resuelve:** Permite a un DJ registrar sus eventos y calcular ingresos brutos, netos y valor hora promedio, considerando costos de transporte y otros gastos.
+- **Tecnologías:** Python, CSV, manejo de archivos, cálculos agregados.
+- **Ruta en repo:** `02_data/P03_ingresos_dj.py`
+- **Archivos generados:**
+  - `02_data/reporte_ingresos_dj.txt` (resumen de ingresos)
+  - `02_data/eventos_dj_demo.csv` (dataset de ejemplo)
+- **Resultado:** Herramienta práctica para entender la rentabilidad real de los eventos como DJ.
+
 

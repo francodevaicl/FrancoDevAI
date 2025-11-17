@@ -1,0 +1,19 @@
+=== REPORTE FINANCIERO ===
+
+Total gastado: $94000
+Promedio por gasto: $10444.44
+
+Gasto por categoría:
+ - comida: $19000
+ - transporte: $3000
+ - servicios: $57000
+ - entretenimiento: $10000
+ - otros: $5000
+
+Top 3 categorías:
+ - servicios: $57000
+ - comida: $19000
+ - entretenimiento: $10000
+
+Gasto individual más alto:
+ - servicios: $35000 (cuenta luz)
