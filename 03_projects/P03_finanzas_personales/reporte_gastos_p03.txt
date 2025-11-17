@@ -1,19 +1,22 @@
 RESUMEN DE GASTOS PERSONALES
 ============================================================
-Período: 2025-11-01  →  2025-11-03
+Período: 2025-11-01  ->  2025-11-03
 Número de movimientos: 6
+Número de días:        3
 
 Gasto por categoría:
 
-  - comida          $13.500
-  - entretenimiento $12.000
-  - otros           $4.000
-  - servicios       $30.000
-  - transporte      $1.000
-------------------------------------------------------------
-TOTAL GENERAL:           $60.500
-PROMEDIO DIARIO:         $20.167
+  - comida                $13.500   ( 22.3 %)
+  - entretenimiento       $12.000   ( 19.8 %)
+  - otros                  $4.000   (  6.6 %)
+  - servicios             $30.000   ( 49.6 %)
+  - transporte             $1.000   (  1.7 %)
 
-Categoría con mayor gasto: servicios ($30.000)
-Movimiento individual más grande: 2025-11-02 | servicios | $30.000 | cuenta luz
+------------------------------------------------------------
+TOTAL GENERAL:       $60.500
+PROMEDIO DIARIO:     $20.167
+
+Categoría con mayor gasto:
+  > servicios  ->  $30.000 ( 49.6 % del total)
+
 ============================================================
