@@ -1,7 +1,9 @@
 import csv
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import List, Dict, Any
 
 """
 P03 - Analizador de finanzas personales (versión 2)
@@ -10,21 +12,23 @@ Objetivo:
 - Leer un archivo CSV con movimientos de dinero.
 - Calcular cuánto se gasta por categoría.
 - Calcular promedio diario de gasto.
+- Destacar la categoría con más gasto.
+- Destacar el gasto individual más alto.
 - Mostrar un resumen claro en consola.
 - Guardar el mismo resumen en un archivo TXT.
 """
 
-
+# ==============================
 # Rutas de archivos
-RUTA_BASE = Path(__file__).resolve().parents[2]  # carpeta GIT WORKS FRANCODEVAI
+# ==============================
 
-RUTA_CSV = (
-    RUTA_BASE
-    / "03_projects"
-    / "P03_finanzas_personales"
-    / "gastos_demo2.csv"
-)
+# carpeta raíz del repo "GIT WORKS FRANCODEVAI"
+RUTA_BASE = Path(__file__).resolve().parents[2]
 
+# CSV oficial de este proyecto (en 03_projects)
+RUTA_CSV = RUTA_BASE / "03_projects" / "P03_finanzas_personales" / "gastos_demo2.csv"
+
+# TXT de salida con el reporte
 RUTA_REPORTE = (
     RUTA_BASE
     / "03_projects"
@@ -33,211 +37,209 @@ RUTA_REPORTE = (
 )
 
 
+# ==============================
+# Modelos de datos
+# ==============================
 
-def leer_movimientos(ruta_csv: Path):
+@dataclass
+class Movimiento:
+    fecha: datetime
+    categoria: str
+    monto: float
+    detalle: str
+
+
+@dataclass
+class ResumenFinanciero:
+    fecha_inicio: datetime
+    fecha_fin: datetime
+    dias_periodo: int
+    num_movimientos: int
+    total_general: float
+    promedio_diario: float
+    gasto_por_categoria: Dict[str, float]
+    categoria_top: str
+    monto_categoria_top: float
+    gasto_maximo: Movimiento
+
+
+# ==============================
+# Funciones utilitarias
+# ==============================
+
+def formato_clp(monto: float) -> str:
+    """Formatea un número como CLP: 12345.6 -> $12.346"""
+    return f"${monto:,.0f}".replace(",", ".")
+
+
+# ==============================
+# Lectura y procesamiento de datos
+# ==============================
+
+def leer_movimientos(ruta_csv: Path) -> List[Movimiento]:
     """
-    Lee el archivo CSV de gastos y devuelve una lista de movimientos.
-
-    Cada movimiento es un diccionario con:
-    - fecha (datetime.date)
-    - categoria (str)
-    - monto (int)
-    - detalle (str)
+    Lee un CSV con columnas:
+        fecha,categoria,monto,detalle
+    y devuelve una lista de Movimiento.
     """
-    movimientos = []
-
     columnas_requeridas = {"fecha", "categoria", "monto", "detalle"}
+
+    print(f"Leyendo movimientos desde: {ruta_csv}")
+
+    if not ruta_csv.exists():
+        raise FileNotFoundError(f"No se encontró el archivo CSV: {ruta_csv}")
+
+    movimientos: List[Movimiento] = []
 
     with ruta_csv.open(encoding="utf-8") as f:
         lector = csv.DictReader(f)
 
-        # Validar columnas
-        if not columnas_requeridas.issubset(lector.fieldnames or []):
+        if lector.fieldnames is None or not columnas_requeridas.issubset(
+            set(lector.fieldnames)
+        ):
             raise ValueError(
-                f"El archivo CSV debe tener estas columnas: {columnas_requeridas}. "
+                f"El CSV debe contener las columnas: {', '.join(columnas_requeridas)}. "
                 f"Columnas encontradas: {lector.fieldnames}"
             )
 
         for fila in lector:
             try:
-                fecha = datetime.strptime(fila["fecha"], "%Y-%m-%d").date()
-                categoria = fila["categoria"].strip()
-                monto = int(fila["monto"])
-                detalle = fila.get("detalle", "").strip()
-            except Exception as e:
-                print(f"[ADVERTENCIA] No se pudo leer la fila {fila}: {e}")
+                fecha = datetime.fromisoformat(fila["fecha"])
+            except ValueError:
+                print(f"⚠️  Fecha inválida: {fila['fecha']} (se omite fila)")
                 continue
 
-            movimientos.append(
-                {
-                    "fecha": fecha,
-                    "categoria": categoria,
-                    "monto": monto,
-                    "detalle": detalle,
-                }
+            try:
+                monto = float(fila["monto"])
+            except ValueError:
+                print(f"⚠️  Monto inválido: {fila['monto']} (se omite fila)")
+                continue
+
+            mov = Movimiento(
+                fecha=fecha,
+                categoria=fila["categoria"],
+                monto=monto,
+                detalle=fila["detalle"],
             )
+            movimientos.append(mov)
 
     return movimientos
 
 
-def calcular_estadisticas(movimientos):
-    """
-    A partir de la lista de movimientos, calcula:
-
-    - gasto_por_categoria: dict[cat] = total
-    - total_general: int
-    - fecha_min, fecha_max: datetime.date
-    - num_movimientos: int
-    - num_dias: int
-    - promedio_diario: float
-    """
+def calcular_resumen(movimientos: List[Movimiento]) -> ResumenFinanciero:
+    """Calcula todos los KPIs financieros a partir de la lista de movimientos."""
     if not movimientos:
         raise ValueError("No hay movimientos para analizar.")
 
-    gasto_por_categoria = defaultdict(int)
-    fechas = []
-    total_general = 0
+    # Fechas del periodo
+    fechas = [m.fecha for m in movimientos]
+    fecha_inicio = min(fechas)
+    fecha_fin = max(fechas)
+    dias_periodo = (fecha_fin - fecha_inicio).days + 1
 
-    for mov in movimientos:
-        categoria = mov["categoria"]
-        monto = mov["monto"]
-        fecha = mov["fecha"]
+    # Gasto por categoría
+    gasto_por_categoria: Dict[str, float] = defaultdict(float)
+    for m in movimientos:
+        gasto_por_categoria[m.categoria] += m.monto
 
-        gasto_por_categoria[categoria] += monto
-        total_general += monto
-        fechas.append(fecha)
-
-    fecha_min = min(fechas)
-    fecha_max = max(fechas)
-    num_movimientos = len(movimientos)
-
-    # Número de días (incluyendo ambos extremos)
-    num_dias = (fecha_max - fecha_min).days + 1
-    promedio_diario = total_general / num_dias if num_dias > 0 else 0
-
-    return {
-        "gasto_por_categoria": dict(gasto_por_categoria),
-        "total_general": total_general,
-        "fecha_min": fecha_min,
-        "fecha_max": fecha_max,
-        "num_movimientos": num_movimientos,
-        "num_dias": num_dias,
-        "promedio_diario": promedio_diario,
-    }
-
-
-def formatear_monto(monto: int) -> str:
-    """
-    Devuelve el monto en formato $XX.XXX usando puntos como separador de miles.
-    """
-    return "$" + f"{monto:,.0f}".replace(",", ".")
-
-
-def generar_reporte_texto(estadisticas: dict) -> str:
-    """
-    Genera el texto del reporte a partir del diccionario de estadísticas.
-    Ahora incluye:
-    - porcentaje de gasto por categoría
-    - categoría con mayor gasto
-    """
-    gasto_por_categoria = estadisticas["gasto_por_categoria"]
-    total_general = estadisticas["total_general"]
-    fecha_min = estadisticas["fecha_min"]
-    fecha_max = estadisticas["fecha_max"]
-    num_movimientos = estadisticas["num_movimientos"]
-    num_dias = estadisticas["num_dias"]
-    promedio_diario = estadisticas["promedio_diario"]
-
-    # Porcentaje por categoría
-    porcentaje_por_categoria = {
-        cat: (monto / total_general * 100) if total_general else 0
-        for cat, monto in gasto_por_categoria.items()
-    }
+    # Total general y promedio diario
+    total_general = sum(gasto_por_categoria.values())
+    promedio_diario = total_general / dias_periodo
 
     # Categoría con mayor gasto
-    categoria_top = None
-    monto_top = 0
-    if gasto_por_categoria:
-        categoria_top, monto_top = max(
-            gasto_por_categoria.items(), key=lambda x: x[1]
-        )
+    categoria_top, monto_categoria_top = max(
+        gasto_por_categoria.items(), key=lambda kv: kv[1]
+    )
 
-    lineas = []
+    # Gasto individual más alto
+    gasto_maximo = max(movimientos, key=lambda m: m.monto)
+
+    return ResumenFinanciero(
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        dias_periodo=dias_periodo,
+        num_movimientos=len(movimientos),
+        total_general=total_general,
+        promedio_diario=promedio_diario,
+        gasto_por_categoria=dict(gasto_por_categoria),
+        categoria_top=categoria_top,
+        monto_categoria_top=monto_categoria_top,
+        gasto_maximo=gasto_maximo,
+    )
+
+
+# ==============================
+# Generación de texto de reporte
+# ==============================
+
+def generar_texto_reporte(resumen: ResumenFinanciero) -> str:
+    lineas: List[str] = []
+
     lineas.append("RESUMEN DE GASTOS PERSONALES")
     lineas.append("=" * 60)
     lineas.append(
-        f"Período: {fecha_min.isoformat()}  ->  {fecha_max.isoformat()}"
+        f"Período: {resumen.fecha_inicio.date()}  →  {resumen.fecha_fin.date()}"
     )
-    lineas.append(f"Número de movimientos: {num_movimientos}")
-    lineas.append(f"Número de días:        {num_dias}")
-    lineas.append("")
+    lineas.append(f"Días en el período: {resumen.dias_periodo}")
+    lineas.append(f"Número de movimientos: {resumen.num_movimientos}")
+    lineas.append("-" * 60)
 
-    # Gasto por categoría con porcentajes
+    lineas.append("")
     lineas.append("Gasto por categoría:")
     lineas.append("")
 
-    if gasto_por_categoria:
-        ancho_cat = max(len(cat) for cat in gasto_por_categoria)
-        for categoria, monto in sorted(
-            gasto_por_categoria.items(), key=lambda x: x[0]
-        ):
-            porcentaje = porcentaje_por_categoria.get(categoria, 0.0)
-            linea = (
-                f"  - {categoria:<{ancho_cat}}  "
-                f"{formatear_monto(monto):>12}   "
-                f"({porcentaje:5.1f} %)"
-            )
-            lineas.append(linea)
-    else:
-        lineas.append("  (sin datos)")
+    for categoria, monto in sorted(
+        resumen.gasto_por_categoria.items(), key=lambda kv: kv[0]
+    ):
+        lineas.append(f"  - {categoria:<15} {formato_clp(monto):>12}")
 
     lineas.append("")
     lineas.append("-" * 60)
-    lineas.append(f"TOTAL GENERAL:       {formatear_monto(total_general)}")
+    lineas.append(f"TOTAL GENERAL: {formato_clp(resumen.total_general)}")
     lineas.append(
-        f"PROMEDIO DIARIO:     {formatear_monto(round(promedio_diario))}"
+        f"PROMEDIO DIARIO: {formato_clp(resumen.promedio_diario)} "
+        f"(en {resumen.dias_periodo} días)"
     )
 
-    # Info de categoría con mayor gasto
-    if categoria_top is not None:
-        porcentaje_top = porcentaje_por_categoria.get(categoria_top, 0.0)
-        lineas.append("")
-        lineas.append("Categoría con mayor gasto:")
-        lineas.append(
-            f"  > {categoria_top}  ->  {formatear_monto(monto_top)} "
-            f"({porcentaje_top:5.1f} % del total)"
-        )
-
     lineas.append("")
+    lineas.append("Métricas destacadas:")
+    lineas.append(
+        f"  - Categoría con mayor gasto: {resumen.categoria_top} "
+        f"({formato_clp(resumen.monto_categoria_top)})"
+    )
+    lineas.append(
+        "  - Gasto individual más alto: "
+        f"{formato_clp(resumen.gasto_maximo.monto)} "
+        f"el {resumen.gasto_maximo.fecha.date()} "
+        f"({resumen.gasto_maximo.detalle})"
+    )
+
     lineas.append("=" * 60)
 
     return "\n".join(lineas)
 
 
-def guardar_reporte(texto: str, ruta_reporte: Path) -> None:
-    """
-    Guarda el reporte en un archivo de texto.
-    """
-    ruta_reporte.parent.mkdir(parents=True, exist_ok=True)
-    with ruta_reporte.open("w", encoding="utf-8") as f:
-        f.write(texto)
+def guardar_reporte(texto: str, ruta: Path) -> None:
+    """Guarda el texto en un archivo de reporte."""
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    ruta.write_text(texto, encoding="utf-8")
 
 
-def main():
-    print("Leyendo movimientos desde:", RUTA_CSV)
+# ==============================
+# Punto de entrada
+# ==============================
+
+def main() -> None:
     movimientos = leer_movimientos(RUTA_CSV)
-
-    print(f"Movimientos cargados: {len(movimientos)}")
-
-    estadisticas = calcular_estadisticas(movimientos)
-    reporte = generar_reporte_texto(estadisticas)
+    resumen = calcular_resumen(movimientos)
+    texto_reporte = generar_texto_reporte(resumen)
 
     # Mostrar en consola
     print()
-    print(reporte)
+    print(texto_reporte)
 
     # Guardar en archivo
-    guardar_reporte(reporte, RUTA_REPORTE)
+    guardar_reporte(texto_reporte, RUTA_REPORTE)
     print(f"\nReporte guardado en: {RUTA_REPORTE.resolve()}")
 
 
