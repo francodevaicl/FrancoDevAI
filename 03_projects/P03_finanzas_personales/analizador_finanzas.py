@@ -1,206 +1,226 @@
 import csv
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 
-"""
-P03 - Analizador de finanzas personales (versión 1)
 
-Objetivo:
-- Leer un archivo CSV con movimientos de dinero.
-- Calcular cuánto se gasta por categoría.
-- Mostrar un resumen claro en consola.
+# ---------------------------------------------------------
+# Configuración de rutas
+# ---------------------------------------------------------
 
-Archivo de datos esperado:
-- Nombre: gastos_demo2.csv
-- Ubicación: misma carpeta que este archivo .py
-- Formato CSV (cabecera obligatoria):
-    fecha,categoria,monto,detalle
-"""
+# CSV con tus gastos (en la misma carpeta que este script)
+RUTA_CSV = Path("gastos_demo2.csv")
 
-# ---------------------------------------------------------------------------
-# Configuración general
-# ---------------------------------------------------------------------------
+# Archivo donde se guardará el reporte de texto
+RUTA_REPORTE = Path("reporte_gastos_p03.txt")
 
-# Carpeta donde está este archivo .py
-BASE_DIR = Path(__file__).resolve().parent
-
-# Ruta del CSV oficial de este proyecto
-RUTA_CSV = BASE_DIR / "gastos_demo2.csv"
-
-# Columnas que deben existir en el CSV
+# Columnas que el CSV debe tener sí o sí
 COLUMNAS_REQUERIDAS = {"fecha", "categoria", "monto", "detalle"}
 
 
-# ---------------------------------------------------------------------------
-# Funciones de utilidad
-# ---------------------------------------------------------------------------
+# ---------------------------------------------------------
+# Lectura de datos
+# ---------------------------------------------------------
 
 def leer_movimientos(ruta_csv: Path):
     """
-    Lee el CSV y devuelve una lista de diccionarios (uno por movimiento).
+    Lee los movimientos desde un archivo CSV y devuelve una lista de dicts.
 
-    Cada diccionario tiene las claves:
-    - "fecha"
-    - "categoria"
-    - "monto"
-    - "detalle"
-
-    Si el archivo está vacío, no tiene cabecera o le faltan columnas,
-    lanza un ValueError con un mensaje claro.
+    Cada movimiento tiene:
+    {
+        "fecha": date,
+        "categoria": str,
+        "monto": int,
+        "detalle": str
+    }
     """
     if not ruta_csv.exists():
         raise FileNotFoundError(f"No se encontró el archivo: {ruta_csv}")
 
-    with ruta_csv.open(mode="r", newline="", encoding="utf-8") as archivo:
+    movimientos = []
+
+    with ruta_csv.open(encoding="utf-8") as archivo:
         lector = csv.DictReader(archivo)
 
-        # 1) Verificar que el archivo tenga cabecera
         if lector.fieldnames is None:
+            raise ValueError("El archivo CSV está vacío.")
+
+        # Normalizamos los nombres de las columnas
+        columnas_archivo = {nombre.strip().lower() for nombre in lector.fieldnames}
+
+        if not COLUMNAS_REQUERIDAS.issubset(columnas_archivo):
             raise ValueError(
-                f"El archivo {ruta_csv} está vacío o no tiene fila de cabecera.\n"
-                f"Se esperaba algo como: fecha,categoria,monto,detalle"
+                f"El CSV debe contener las columnas: {COLUMNAS_REQUERIDAS}, "
+                f"pero tiene: {columnas_archivo}"
             )
 
-        columnas_en_archivo = set(lector.fieldnames)
+        for fila in lector:
+            try:
+                fecha = datetime.strptime(fila["fecha"], "%Y-%m-%d").date()
+                categoria = fila["categoria"].strip().lower()
+                monto = int(fila["monto"])
+                detalle = fila.get("detalle", "").strip()
+            except (KeyError, ValueError):
+                # Si hay una fila mal escrita, la saltamos sin romper el programa
+                continue
 
-        # 2) Verificar que estén todas las columnas obligatorias
-        faltantes = COLUMNAS_REQUERIDAS - columnas_en_archivo
-        if faltantes:
-            raise ValueError(
-                f"Al archivo {ruta_csv.name} le faltan estas columnas: {faltantes}\n"
-                f"Columnas encontradas: {columnas_en_archivo}\n"
-                f"Cabecera esperada: {COLUMNAS_REQUERIDAS}"
+            movimientos.append(
+                {
+                    "fecha": fecha,
+                    "categoria": categoria,
+                    "monto": monto,
+                    "detalle": detalle,
+                }
             )
 
-        # 3) Cargar todos los movimientos en memoria
-        movimientos = list(lector)
-        if not movimientos:
-            raise ValueError(
-                f"El archivo {ruta_csv.name} solo tiene la cabecera, "
-                f"pero no contiene movimientos."
-            )
-
-        return movimientos
+    return movimientos
 
 
-def calcular_gasto_por_categoria(movimientos):
+# ---------------------------------------------------------
+# Cálculos
+# ---------------------------------------------------------
+
+def calcular_resumen(movimientos):
     """
-    Recibe una lista de movimientos (dicts) y devuelve un dict:
-
-        { categoria_normalizada: total_gastado }
-
-    - Convierte el monto a float.
-    - Ignora filas cuyo monto no se pueda interpretar.
-    - Normaliza la categoría a minúsculas y sin espacios iniciales/finales.
-    """
-    totales = defaultdict(float)
-
-    for mov in movimientos:
-        categoria = (mov.get("categoria") or "").strip().lower()
-        monto_bruto = (mov.get("monto") or "").strip()
-
-        if not categoria:
-            # Si no hay categoría, ignoramos la fila
-            print(f"[AVISO] Fila sin categoría, se ignora: {mov}")
-            continue
-
-        try:
-            # Permitimos montos como "1000", "1.000", "1,000.50", etc.
-            monto_limpio = monto_bruto.replace(".", "").replace(",", ".")
-            monto = float(monto_limpio)
-        except ValueError:
-            print(
-                f"[AVISO] No se pudo interpretar el monto '{monto_bruto}' "
-                f"en la categoría '{categoria}'. Fila ignorada."
-            )
-            continue
-
-        totales[categoria] += monto
-
-    return dict(totales)
-
-
-def obtener_rango_fechas(movimientos):
-    """
-    A partir de la lista de movimientos, devuelve (fecha_min, fecha_max)
-    en formato string, o (None, None) si no se pudieron leer.
-    """
-    fechas = [
-        (mov.get("fecha") or "").strip()
-        for mov in movimientos
-        if (mov.get("fecha") or "").strip()
-    ]
-
-    if not fechas:
-        return None, None
-
-    fechas_ordenadas = sorted(fechas)
-    return fechas_ordenadas[0], fechas_ordenadas[-1]
-
-
-def formatear_monto(monto):
-    """
-    Devuelve el monto formateado estilo CL/ES:
-    10000 -> $10.000
-    """
-    return "$" + f"{monto:,.0f}".replace(",", ".")
-
-
-def mostrar_resumen(movimientos, totales_por_categoria):
-    """
-    Imprime en consola un resumen legible:
+    Recibe una lista de movimientos y calcula:
     - rango de fechas
     - número de movimientos
-    - tabla de gasto por categoría
+    - gasto por categoría
     - total general
+    - promedio diario
+    - categoría con mayor gasto
+    - movimiento individual más grande
     """
-    print("\n" + "=" * 70)
-    print("RESUMEN DE GASTOS PERSONALES")
-    print("=" * 70)
+    if not movimientos:
+        raise ValueError("La lista de movimientos está vacía.")
 
-    fecha_min, fecha_max = obtener_rango_fechas(movimientos)
-    if fecha_min and fecha_max:
-        print(f"Período: {fecha_min}  →  {fecha_max}")
-    print(f"Número de movimientos: {len(movimientos)}\n")
+    gasto_por_categoria = defaultdict(int)
+    fechas = []
+    total_general = 0
+    movimiento_mayor = None  # dict con el movimiento de mayor monto
 
-    if not totales_por_categoria:
-        print("No se encontraron gastos válidos para mostrar.")
-        return
+    for mov in movimientos:
+        fechas.append(mov["fecha"])
+        gasto_por_categoria[mov["categoria"]] += mov["monto"]
+        total_general += mov["monto"]
 
-    print("Gasto por categoría:\n")
+        if movimiento_mayor is None or mov["monto"] > movimiento_mayor["monto"]:
+            movimiento_mayor = mov
 
-    total_general = 0.0
+    fecha_min = min(fechas)
+    fecha_max = max(fechas)
+    num_movimientos = len(movimientos)
 
-    # Ordenamos categorías de mayor a menor gasto
-    for categoria, total in sorted(
-        totales_por_categoria.items(), key=lambda x: x[1], reverse=True
+    # Número de días en el período (incluyendo ambos extremos)
+    dias_periodo = (fecha_max - fecha_min).days + 1
+    promedio_diario = total_general / dias_periodo if dias_periodo > 0 else 0
+
+    # Categoría con mayor gasto
+    categoria_top = max(
+        gasto_por_categoria.items(), key=lambda par: par[1]
+    ) if gasto_por_categoria else (None, 0)
+
+    resumen = {
+        "fecha_min": fecha_min,
+        "fecha_max": fecha_max,
+        "num_movimientos": num_movimientos,
+        "gasto_por_categoria": gasto_por_categoria,
+        "total_general": total_general,
+        "promedio_diario": promedio_diario,
+        "categoria_top": categoria_top,
+        "movimiento_mayor": movimiento_mayor,
+    }
+
+    return resumen
+
+
+# ---------------------------------------------------------
+# Formateo e impresión
+# ---------------------------------------------------------
+
+def formatear_resumen(resumen):
+    """
+    Recibe el dict de resumen y devuelve un texto listo para imprimir / guardar.
+    """
+    lineas = []
+
+    lineas.append("RESUMEN DE GASTOS PERSONALES")
+    lineas.append("=" * 60)
+    lineas.append(
+        f"Período: {resumen['fecha_min']}  →  {resumen['fecha_max']}"
+    )
+    lineas.append(f"Número de movimientos: {resumen['num_movimientos']}")
+    lineas.append("")
+
+    lineas.append("Gasto por categoría:")
+    lineas.append("")
+
+    for categoria, monto in sorted(
+        resumen["gasto_por_categoria"].items(), key=lambda par: par[0]
     ):
-        print(f"  - {categoria:<20} {formatear_monto(total)}")
-        total_general += total
+        lineas.append(f"  - {categoria:15} ${monto:,.0f}".replace(",", "."))
 
-    print("\n" + "-" * 70)
-    print(f"TOTAL GENERAL: {formatear_monto(total_general)}")
-    print("-" * 70 + "\n")
+    lineas.append("-" * 60)
+    lineas.append(
+        f"TOTAL GENERAL:           ${resumen['total_general']:,.0f}".replace(",", ".")
+    )
+    lineas.append(
+        f"PROMEDIO DIARIO:         ${resumen['promedio_diario']:,.0f}".replace(",", ".")
+    )
+    lineas.append("")
+
+    categoria_top, monto_top = resumen["categoria_top"]
+    if categoria_top is not None:
+        lineas.append(
+            f"Categoría con mayor gasto: {categoria_top} "
+            f"(${monto_top:,.0f})".replace(",", ".")
+        )
+
+    mov_max = resumen["movimiento_mayor"]
+    if mov_max:
+        lineas.append(
+            "Movimiento individual más grande: "
+            f"{mov_max['fecha']} | {mov_max['categoria']} | "
+            f"${mov_max['monto']:,.0f} | {mov_max['detalle']}".replace(",", ".")
+        )
+
+    lineas.append("=" * 60)
+
+    return "\n".join(lineas)
 
 
-# ---------------------------------------------------------------------------
-# Punto de entrada principal
-# ---------------------------------------------------------------------------
+def guardar_reporte(texto, ruta_salida: Path):
+    """
+    Guarda el resumen en un archivo de texto.
+    """
+    with ruta_salida.open("w", encoding="utf-8") as archivo:
+        archivo.write(texto)
+
+
+# ---------------------------------------------------------
+# Punto de entrada
+# ---------------------------------------------------------
 
 def main():
-    print(f"Leyendo datos desde: {RUTA_CSV}\n")
-
     try:
         movimientos = leer_movimientos(RUTA_CSV)
-    except FileNotFoundError as e:
-        print(f"[ERROR] {e}")
-        return
-    except ValueError as e:
-        print(f"[ERROR] {e}")
+    except Exception as e:
+        print(f"[ERROR] No fue posible leer el archivo CSV: {e}")
         return
 
-    totales_por_categoria = calcular_gasto_por_categoria(movimientos)
-    mostrar_resumen(movimientos, totales_por_categoria)
+    if not movimientos:
+        print("No se encontraron movimientos válidos.")
+        return
+
+    resumen = calcular_resumen(movimientos)
+    texto_resumen = formatear_resumen(resumen)
+
+    # Mostrar en consola
+    print(texto_resumen)
+
+    # Guardar en archivo
+    guardar_reporte(texto_resumen, RUTA_REPORTE)
+    print(f"\nReporte guardado en: {RUTA_REPORTE.resolve()}")
 
 
 if __name__ == "__main__":
