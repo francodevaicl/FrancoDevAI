@@ -1,0 +1,8 @@
+fecha,categoria,monto,detalle
+2025-11-01,comida,8500,almuerzo
+2025-11-01,transporte,1000,metro
+2025-11-02,servicios,30000,cuenta luz
+2025-11-02,comida,5000,once
+2025-11-03,entretenimiento,12000,salida
+2025-11-03,otros,4000,compras varias
+python analizador_finanzas.py
