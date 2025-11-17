@@ -1,0 +1,44 @@
+REPORTE DE REDES SOCIALES (P04)
+============================================================
+Total de posts: 10
+Engagement promedio por post: 188.10
+
+Número de posts por red:
+red
+instagram    5
+tiktok       3
+youtube      2
+Name: count, dtype: int64
+
+Número de posts por tipo de contenido:
+tipo
+video    4
+reel     2
+post     2
+story    1
+short    1
+Name: count, dtype: int64
+
+Engagement promedio por red:
+red
+tiktok       299.333333
+youtube      180.000000
+instagram    124.600000
+Name: engagement, dtype: float64
+
+Engagement promedio por tipo de contenido:
+tipo
+video    266.5
+short    192.0
+reel     182.5
+post      97.5
+story     63.0
+Name: engagement, dtype: float64
+
+Post con mayor engagement:
+- Fecha: 2025-11-06
+- Red: tiktok
+- Tipo: video
+- Descripción: challenge con remix
+- Likes: 300, Comentarios: 40, Guardados: 35
+- Engagement total: 375
